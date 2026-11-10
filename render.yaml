@@ -1,32 +1,35 @@
+
 services:
   - type: web
     name: financekids-ia
     runtime: python
     plan: free
+
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+
     startCommand: python manage.py migrate --noinput && gunicorn financekids.wsgi:application --bind 0.0.0.0:$PORT --workers 1
+
     envVars:
       - key: DEBUG
         value: "False"
+
       - key: SECRET_KEY
         generateValue: true
+
       - key: ALLOWED_HOSTS
         value: .onrender.com
+
       - key: CSRF_TRUSTED_ORIGINS
         value: https://financekids-ia.onrender.com
+
       - key: USE_SQLITE
         value: "False"
+
       - key: DATABASE_URL
-        fromDatabase:
-          name: financekids-ia-db
-          property: connectionString
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: GROQ_API_KEY
         sync: false
 
-databases:
-  - name: financekids-ia-db
-    databaseName: financekids
-    user: financekids
-    plan: free
+      - key: GEMINI_API_KEY
+        sync: false
+
+      - key: GROQ_API_KEY
+        sync: false
