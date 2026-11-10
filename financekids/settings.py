@@ -1,0 +1,214 @@
+﻿from pathlib import Path
+import os
+from urllib.parse import urlparse
+from dotenv import load_dotenv
+import dj_database_url
+
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def str_to_bool(value, default=False):
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def get_env(name, default=None):
+    value = os.getenv(name)
+    if value is None:
+        return default
+
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        value = value[1:-1].strip()
+
+    return value if value != '' else default
+
+
+# default=False: si olvidas definir DEBUG en producción, falla de forma segura.
+DEBUG = str_to_bool(get_env('DEBUG'), default=False)
+
+SECRET_KEY = get_env('SECRET_KEY')
+
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-dev-key-change-me'
+    else:
+        raise ValueError('SECRET_KEY no configurada. Define SECRET_KEY en variables de entorno.')
+
+allowed_hosts_env = get_env('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+
+csrf_trusted_origins_env = get_env('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in csrf_trusted_origins_env.split(',') if origin.strip()
+]
+
+# Railway inyecta RAILWAY_PUBLIC_DOMAIN automáticamente con el dominio público de la app.
+railway_public_domain = get_env('RAILWAY_PUBLIC_DOMAIN')
+if railway_public_domain:
+    if railway_public_domain not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(railway_public_domain)
+    railway_origin = f'https://{railway_public_domain}'
+    if railway_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(railway_origin)
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'game',
+    'core',
+    "anymail",
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+if not DEBUG:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
+ROOT_URLCONF = 'financekids.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'financekids.wsgi.application'
+
+if str_to_bool(get_env('USE_SQLITE'), default=False):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+elif get_env('DATABASE_URL'):
+    # DATABASE_URL soporta Postgres (Render) y MySQL (Railway: ${{ MySQL.MYSQL_PRIVATE_URL }}).
+    # ssl_require solo aplica a Postgres; MySQL usa una opción distinta ("sslmode" no es válida ahí).
+    database_url_value = get_env('DATABASE_URL')
+    is_postgres_url = database_url_value.startswith(('postgres://', 'postgresql://'))
+
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=database_url_value,
+            conn_max_age=600,
+            ssl_require=is_postgres_url and not DEBUG,
+        )
+    }
+
+else:
+    mysql_addon_uri = get_env('MYSQL_ADDON_URI', '')
+    parsed_uri = urlparse(mysql_addon_uri) if mysql_addon_uri else None
+
+    db_name = get_env('MYSQL_ADDON_DB') or get_env('DB_NAME')
+    db_user = get_env('MYSQL_ADDON_USER') or get_env('DB_USER')
+    db_password = get_env('MYSQL_ADDON_PASSWORD') or get_env('DB_PASSWORD')
+    db_host = get_env('MYSQL_ADDON_HOST') or get_env('DB_HOST')
+    db_port = get_env('MYSQL_ADDON_PORT') or get_env('DB_PORT')
+
+    if parsed_uri:
+        db_name = db_name or (parsed_uri.path.lstrip('/') if parsed_uri.path else None)
+        db_user = db_user or parsed_uri.username
+        db_password = db_password or parsed_uri.password
+        db_host = db_host or parsed_uri.hostname
+        db_port = db_port or (str(parsed_uri.port) if parsed_uri.port else None)
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': db_name or 'financekids',
+            'USER': db_user or 'root',
+            'PASSWORD': db_password or '',
+            'HOST': db_host or 'localhost',
+            'PORT': db_port or '3306',
+        }
+    }
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+LANGUAGE_CODE = 'es-co'
+TIME_ZONE = 'America/Bogota'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = '/static/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'core' / 'static',
+]
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': (
+            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            if not DEBUG else
+            'django.contrib.staticfiles.storage.StaticFilesStorage'
+        ),
+    },
+}
+
+if not DEBUG:
+    # Railway/Render terminan el TLS en el proxy y reenvían la petición como HTTP
+    # interno con el header X-Forwarded-Proto; sin esto, SECURE_SSL_REDIRECT provoca
+    # un bucle infinito de redirects (ERR_TOO_MANY_REDIRECTS).
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = str_to_bool(get_env('SECURE_SSL_REDIRECT'), default=True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(get_env('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/juego1/'
+LOGOUT_REDIRECT_URL = '/'
+
+EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+
+ANYMAIL = {
+    "RESEND_API_KEY": get_env("RESEND_API_KEY", ""),
+}
+
+DEFAULT_FROM_EMAIL = get_env(
+    "DEFAULT_FROM_EMAIL",
+    "onboarding@resend.dev"
+)
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+

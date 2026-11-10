@@ -1,0 +1,194 @@
+import json
+from django.conf import settings
+from django.core.mail import send_mail
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout, views as auth_views
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import Http404, JsonResponse
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods, require_POST
+from core.forms import RegistroForm
+from game.models import UserProfile
+from core.ai import preguntar_tutor
+
+
+def _get_user_profile(user):
+    profile, _ = UserProfile.objects.get_or_create(usuario=user)
+    return profile
+
+
+class FinanceKidsPasswordResetView(auth_views.PasswordResetView):
+    def form_valid(self, form):
+        print("EMAIL_BACKEND:", settings.EMAIL_BACKEND)
+        print("EMAIL_HOST:", settings.EMAIL_HOST)
+        print("EMAIL_PORT:", settings.EMAIL_PORT)
+        print("EMAIL_USE_TLS:", settings.EMAIL_USE_TLS)
+        print("EMAIL_HOST_USER:", settings.EMAIL_HOST_USER)
+
+        try:
+            return super().form_valid(form)
+        except Exception as e:
+            print("ERROR AL ENVIAR CORREO:", repr(e))
+            messages.error(
+                self.request,
+                f"Error: {e}",
+            )
+            return self.render_to_response(
+                self.get_context_data(form=form)
+            )
+
+@require_http_methods(['GET', 'POST'])
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('index')
+
+    if request.method == "POST":
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+
+            if user.email:
+                try:
+                    send_mail(
+                        subject='Confirmación de inicio de sesión - FinanceKids',
+                        message=(
+                            f"Hola {user.get_full_name() or user.username},\n\n"
+                            "Se ha iniciado sesión correctamente en FinanceKids.\n\n"
+                            f"Usuario: {user.username}\n"
+                            f"Fecha y hora: {timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M:%S')}\n"
+                            f"IP: {request.META.get('REMOTE_ADDR', 'Desconocida')}\n\n"
+                            "Si no fuiste tú, cambia tu contraseña inmediatamente."
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                    )
+                except Exception:
+                    messages.error(request, 'El inicio de sesión fue correcto, pero no se pudo enviar la confirmación por correo.')
+
+            return redirect('index')
+        return render(request, 'core/login.html', {'error': 'Usuario o contraseña incorrectos'})
+
+    return render(request, 'core/login.html')
+
+
+@login_required
+def index(request):
+    profile = _get_user_profile(request.user)
+    progreso_actual = profile.ultimo_tema_desbloqueado
+    progreso = {request.user.username: progreso_actual}
+    return render(
+        request,
+        'core/index.html',
+        {
+            'progreso_actual': progreso_actual,
+            'progreso': progreso,
+        },
+    )
+
+
+@require_http_methods(['GET', 'POST'])
+def registro(request):
+    if request.method == "POST":
+        form = RegistroForm(request.POST)
+        if form.is_valid():
+            form.save(request=request)
+            return redirect('login')
+        return render(request, 'core/registro.html', {'form': form})
+
+    return render(request, 'core/registro.html', {'form': RegistroForm()})
+
+
+@require_http_methods(['GET', 'POST'])
+def logout_view(request):
+    if request.method == 'GET':
+        return render(request, 'core/logout_confirm.html')
+    logout(request)
+    return redirect('login')
+
+
+@login_required
+def aprendizaje(request, tema):
+    if tema < 1 or tema > 3:
+        raise Http404('Tema no encontrado')
+
+    tema_actual = _get_user_profile(request.user).ultimo_tema_desbloqueado
+
+    if tema > tema_actual:
+        return render(request, "core/bloqueado.html", {"tema": tema})
+    return render(request, f"core/aprendizaje{tema}.html")
+
+
+@login_required
+@require_POST
+def completar_tema(request, tema):
+    respuestas_correctas = {
+        1: ('1', '1', '2'),
+        2: ('1', '1'),
+    }
+    if tema not in respuestas_correctas:
+        raise Http404('Tema no encontrado')
+
+    profile = _get_user_profile(request.user)
+    tema_actual = profile.ultimo_tema_desbloqueado
+
+    # Solo avanzar si se completa exactamente el tema actual (evita saltar temas)
+    respuestas = tuple(request.POST.get(f'respuesta_{indice}', '') for indice in range(1, len(respuestas_correctas[tema]) + 1))
+    if tema != tema_actual or respuestas != respuestas_correctas[tema]:
+        messages.error(request, 'Debes responder correctamente todas las preguntas antes de avanzar.')
+        return redirect('preguntas1' if tema == 1 else 'preguntas2')
+
+    profile.ultimo_tema_desbloqueado = tema + 1
+    profile.save(update_fields=['ultimo_tema_desbloqueado'])
+
+    siguiente_tema = tema + 1
+    MAX_TEMAS = 10
+    if siguiente_tema > MAX_TEMAS:
+        return redirect('index')
+
+    # Temas 4 en adelante aún en construcción
+    ULTIMO_TEMA_DISPONIBLE = 3
+    if siguiente_tema > ULTIMO_TEMA_DISPONIBLE:
+        return redirect('construccion')
+
+    return redirect('aprendizaje', tema=siguiente_tema)
+
+@login_required
+def juego1(request):
+    return render(request, 'core/juego1.html')
+
+
+@login_required
+def preguntas1(request):
+    return render(request, 'core/preguntas1.html')
+
+
+@login_required
+def juego2(request):
+    return render(request, 'core/juego2.html')
+
+
+@login_required
+def preguntas2(request):
+    return render(request, 'core/preguntas2.html')
+
+
+@login_required
+def construccion(request):
+    return render(request, 'core/construccion.html')
+
+@login_required
+@require_POST
+def tutor_view(request):
+    try:
+        pregunta = json.loads(request.body).get("pregunta", "").strip()[:300]
+    except json.JSONDecodeError:
+        return JsonResponse({"respuesta": "Escribe una pregunta."})
+    if not pregunta:
+        return JsonResponse({"respuesta": "Escribe una pregunta."})
+    return JsonResponse({"respuesta": preguntar_tutor(pregunta)})

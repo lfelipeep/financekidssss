@@ -1,0 +1,66 @@
+{% csrf_token %}
+<div id="tutor-box" style="position:fixed;bottom:20px;right:20px;width:320px;max-width:90vw;background:#fff;border:2px solid #4CAF50;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.25);font-family:sans-serif;z-index:9999">
+  <div onclick="toggleTutor()" style="background:#4CAF50;color:#fff;padding:10px 14px;border-radius:14px 14px 0 0;cursor:pointer;font-weight:bold">
+    💰 Tutor de finanzas <span id="tutor-flecha" style="float:right">▼</span>
+  </div>
+  <div id="tutor-cuerpo" style="padding:10px">
+    <div id="tutor-chat" style="height:220px;overflow-y:auto;margin-bottom:8px;font-size:14px;color:#222">
+      <p><b>Tutor:</b> ¡Hola! Pregúntame lo que quieras sobre dinero y ahorro 😊</p>
+    </div>
+    <div style="display:flex;gap:6px">
+      <input id="tutor-input" maxlength="300" placeholder="Escribe tu pregunta..."
+             style="flex:1;padding:8px;border:1px solid #ccc;border-radius:8px"
+             onkeydown="if(event.key==='Enter') enviarTutor()">
+      <button id="tutor-btn" onclick="enviarTutor()"
+              style="background:#4CAF50;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function escapar(t) {
+  const d = document.createElement("div");
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function toggleTutor() {
+  const cuerpo = document.getElementById("tutor-cuerpo");
+  const flecha = document.getElementById("tutor-flecha");
+  const oculto = cuerpo.style.display === "none";
+  cuerpo.style.display = oculto ? "block" : "none";
+  flecha.textContent = oculto ? "▼" : "▲";
+}
+
+async function enviarTutor() {
+  const input = document.getElementById("tutor-input");
+  const btn = document.getElementById("tutor-btn");
+  const chat = document.getElementById("tutor-chat");
+  const texto = input.value.trim();
+  if (!texto) return;
+
+  chat.innerHTML += "<p><b>Tú:</b> " + escapar(texto) + "</p>";
+  input.value = "";
+  btn.disabled = true;
+  const pensando = document.createElement("p");
+  pensando.innerHTML = "<i>Pensando... 🤔</i>";
+  chat.appendChild(pensando);
+  chat.scrollTop = chat.scrollHeight;
+
+  try {
+    const csrf = document.querySelector("#tutor-box [name=csrfmiddlewaretoken]")
+      || document.querySelector("[name=csrfmiddlewaretoken]");
+    const r = await fetch("/api/tutor/", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRFToken": csrf.value},
+      body: JSON.stringify({pregunta: texto}),
+    });
+    const data = await r.json();
+    pensando.innerHTML = "<b>Tutor:</b> " + escapar(data.respuesta || "No pude responder.");
+  } catch (e) {
+    pensando.innerHTML = "<b>Tutor:</b> Ups, algo falló. ¡Intenta otra vez!";
+  }
+  btn.disabled = false;
+  chat.scrollTop = chat.scrollHeight;
+}
+</script>

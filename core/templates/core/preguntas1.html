@@ -1,0 +1,287 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz - Tema 1 · Finance Kids</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- CSS personalizado -->
+    <link rel="stylesheet" href="{% static 'css/preguntas1.css' %}">
+</head>
+<body>
+
+<div class="bubbles">
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+</div>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="navbar navbar-expand-lg navbar-kids">
+    <div class="container">
+        <a class="navbar-brand navbar-brand-kids" href="{% url 'index' %}">
+            <img src="{% static 'img/logo_finance_transparente.png' %}" alt="Finance Kids Logo">
+            FinanceKids
+        </a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+            <span style="color:#fff;font-size:1.5rem;"><i class="bi bi-list"></i></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMenu">
+            <ul class="navbar-nav ms-auto gap-2 align-items-center">
+                <li class="nav-item">
+                    <a class="nav-link-kids" href="{% url 'index' %}"><i class="bi bi-house-fill me-1"></i>Inicio</a>
+                </li>
+                <li class="nav-item ms-1">
+                    <div class="user-chip">
+                        <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+                        {{ request.user.username }}
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link-kids" href="{% url 'logout' %}" style="color:rgba(255,150,150,0.85)!important;">
+                        <i class="bi bi-box-arrow-right me-1"></i>Salir
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero-section">
+    <div class="container">
+        <div class="quiz-badge"><i class="bi bi-patch-question-fill me-1"></i>Quiz · Tema 1</div>
+        <h1 class="quiz-title">Preguntas <span>rápidas</span> 🧩</h1>
+        <p class="quiz-sub mb-0">Responde correctamente las 3 preguntas para completar el tema.</p>
+    </div>
+</section>
+
+<!-- ===================== SCORE BAR ===================== -->
+<div class="score-bar px-3 mt-3">
+    <div class="score-glass">
+        <div class="score-item">
+            <div class="score-num" id="score-correctas">0</div>
+            <div class="score-lbl">Correctas</div>
+        </div>
+        <div class="progress-score">
+            <div class="d-flex justify-content-between mb-1">
+                <small style="color:rgba(255,255,255,0.55);font-size:0.72rem;font-weight:700;">Progreso</small>
+                <small style="color:rgba(255,255,255,0.55);font-size:0.72rem;font-weight:700;" id="score-pct">0 / 3</small>
+            </div>
+            <div class="progress-score-bar">
+                <div class="fill" id="progress-fill"></div>
+            </div>
+        </div>
+        <div class="score-item">
+            <div class="score-num" id="score-respondidas">0</div>
+            <div class="score-lbl">Respondidas</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MAIN CARD ===================== -->
+<section class="py-2 pb-5">
+    <div class="container">
+        <div class="main-card">
+
+            <div class="section-pill"><i class="bi bi-patch-question-fill"></i> ¡Demuestra lo que aprendiste!</div>
+
+            <!-- ===== PREGUNTA 1 ===== -->
+            <div class="pregunta-card" id="pcard-1">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="pregunta-num">1</div>
+                    <div class="w-100">
+                        <div class="pregunta-texto">¿Para qué sirve el dinero?</div>
+                        <div class="opciones-grid">
+                            <button class="opcion-btn" onclick="responder(this, true, 1, '¡Exacto! El dinero sirve para intercambiar bienes y servicios.')">
+                                <span class="opcion-icon">✅</span> 💳 Comprar cosas
+                            </button>
+                            <button class="opcion-btn" onclick="responder(this, false, 1, 'El dinero no tiene poderes mágicos, sirve para el intercambio.')">
+                                <span class="opcion-icon">❌</span> 🪄 Hacer magia
+                            </button>
+                        </div>
+                        <div class="feedback-inline" id="fb-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PREGUNTA 2 ===== -->
+            <div class="pregunta-card" id="pcard-2">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="pregunta-num">2</div>
+                    <div class="w-100">
+                        <div class="pregunta-texto">¿Qué significa ahorrar?</div>
+                        <div class="opciones-grid">
+                            <button class="opcion-btn" onclick="responder(this, true, 2, '¡Muy bien! Ahorrar es guardar dinero para usarlo después.')">
+                                <span class="opcion-icon">✅</span> 🐷 Guardar dinero para el futuro
+                            </button>
+                            <button class="opcion-btn" onclick="responder(this, false, 2, 'Gastar todo ya es lo opuesto a ahorrar. ¡El ahorro es para el futuro!')">
+                                <span class="opcion-icon">❌</span> 💸 Gastar todo ya
+                            </button>
+                        </div>
+                        <div class="feedback-inline" id="fb-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PREGUNTA 3 ===== -->
+            <div class="pregunta-card" id="pcard-3">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="pregunta-num">3</div>
+                    <div class="w-100">
+                        <div class="pregunta-texto">¿Cuál de estos NO se compra con dinero?</div>
+                        <div class="opciones-grid">
+                            <button class="opcion-btn" onclick="responder(this, false, 3, 'Los juguetes sí se compran con dinero. ¡Ojo!')">
+                                <span class="opcion-icon">❌</span> 🧸 Un juguete
+                            </button>
+                            <button class="opcion-btn" onclick="responder(this, true, 3, '¡Correcto! El amor es gratuito, no se compra con dinero.')">
+                                <span class="opcion-icon">✅</span> ❤️ El amor
+                            </button>
+                        </div>
+                        <div class="feedback-inline" id="fb-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== RESULTADO FINAL ===== -->
+            <div class="resultado-card" id="resultado">
+                <div class="resultado-emoji" id="resultado-emoji">🏆</div>
+                <div class="resultado-title" id="resultado-title">¡Perfecto!</div>
+                <p class="resultado-sub" id="resultado-sub"></p>
+            </div>
+
+            <!-- ===== BOTONES ===== -->
+            <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center align-items-center flex-wrap">
+                <a href="{% url 'aprendizaje' tema=1 %}" class="btn-back">
+                    <i class="bi bi-arrow-left"></i>Volver al tema
+                </a>
+
+                <a href="{% url 'aprendizaje' tema=2 %}" class="btn-siguiente" id="btn-siguiente">
+                    <i class="bi bi-arrow-right-circle-fill"></i>¡Siguiente tema!
+                </a>
+
+                <form method="POST" action="{% url 'completar_tema' tema=1 %}" id="form-completar" style="display:none;">
+                    {% csrf_token %}
+                    <input type="hidden" name="respuesta_1" id="respuesta-1">
+                    <input type="hidden" name="respuesta_2" id="respuesta-2">
+                    <input type="hidden" name="respuesta_3" id="respuesta-3">
+                    <button type="submit" class="btn-completar">
+                        ✅ Completar Tema 1
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<div class="footer-bar">
+    © 2025 FinanceKids 💰 ·
+    <a href="{% url 'index' %}">Mis temas</a> ·
+    <a href="{% url 'logout' %}">Salir</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const TOTAL = 3;
+    let correctas = 0;
+    let respondidas = 0;
+
+    function responder(btn, esCorrecta, numPregunta, explicacion) {
+        const card = document.getElementById(`pcard-${numPregunta}`);
+        const fb = document.getElementById(`fb-${numPregunta}`);
+
+        // Deshabilitar todos los botones de esta pregunta
+        card.querySelectorAll('.opcion-btn').forEach(b => b.disabled = true);
+
+        // Marcar botón seleccionado
+        const opciones = Array.from(card.querySelectorAll('.opcion-btn'));
+        document.getElementById(`respuesta-${numPregunta}`).value = opciones.indexOf(btn) + 1;
+        if (esCorrecta) {
+            btn.classList.add('correcta');
+            card.classList.add('respondida-ok');
+            correctas++;
+            document.getElementById('score-correctas').textContent = correctas;
+        } else {
+            btn.classList.add('incorrecta');
+            card.classList.add('respondida-mal');
+            // Mostrar la opción correcta (la que tiene onclick con true)
+            card.querySelectorAll('.opcion-btn').forEach(b => {
+                if (b.getAttribute('onclick') && b.getAttribute('onclick').includes('true')) {
+                    b.classList.add('correcta');
+                }
+            });
+        }
+
+        // Feedback inline
+        fb.className = `feedback-inline show ${esCorrecta ? 'bueno' : 'malo'}`;
+        fb.innerHTML = `<i class="bi bi-${esCorrecta ? 'check-circle-fill' : 'x-circle-fill'}"></i> ${explicacion}`;
+
+        respondidas++;
+        document.getElementById('score-respondidas').textContent = respondidas;
+        document.getElementById('score-pct').textContent = `${correctas} / ${TOTAL}`;
+        document.getElementById('progress-fill').style.width = `${(correctas / TOTAL) * 100}%`;
+
+        // Al responder todas las preguntas
+        if (respondidas >= TOTAL) {
+            setTimeout(() => mostrarResultado(), 500);
+        }
+    }
+
+    function mostrarResultado() {
+        const card = document.getElementById('resultado');
+        const emoji = document.getElementById('resultado-emoji');
+        const title = document.getElementById('resultado-title');
+        const sub = document.getElementById('resultado-sub');
+        card.classList.add('show');
+
+        if (correctas === TOTAL) {
+            emoji.textContent = '🏆';
+            title.textContent = '¡Perfecto! ¡Eres un genio!';
+            sub.textContent = `¡Respondiste ${correctas} de ${TOTAL} preguntas correctamente! Kibo está muy orgulloso de ti. 🌟`;
+            document.getElementById('btn-siguiente').classList.add('visible');
+            launchConfetti();
+        } else if (correctas >= 2) {
+            emoji.textContent = '🌟';
+            title.textContent = `¡Muy bien! ${correctas} de ${TOTAL} correctas`;
+            sub.textContent = '¡Casi perfecto! Ya puedes continuar al siguiente tema. 🚀';
+            document.getElementById('btn-siguiente').classList.add('visible');
+        } else {
+            emoji.textContent = '💪';
+            title.textContent = `¡Buen intento! ${correctas} de ${TOTAL} correctas`;
+            sub.textContent = 'Repasa el tema y vuelve a intentarlo. ¡La práctica hace al maestro! 📚';
+        }
+
+        document.getElementById('form-completar').style.display = 'block';
+    }
+
+    function launchConfetti() {
+        const emojis = ['🎉', '🧩', '💰', '⭐', '🏆', '✨', '💎', '🎊', '🪙', '🌟', '🎈'];
+        for (let i = 0; i < 22; i++) {
+            const el = document.createElement('div');
+            el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            el.style.cssText = `
+                position:fixed; top:-30px; font-size:1.5rem;
+                pointer-events:none; z-index:9999;
+                left:${Math.random() * 100}vw;
+                animation: confettiFall ${1.5 + Math.random()}s ease-in forwards;
+                animation-delay: ${Math.random() * 0.5}s;
+            `;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 2800);
+        }
+    }
+</script>
+
+</body>
+</html>
